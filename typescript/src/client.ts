@@ -88,6 +88,14 @@ export class GarminClient {
   }
 
   /** Refresh the DI Bearer token using the stored refresh token. */
+  /**
+   * Called after every successful refresh, with the client holding the new tokens. Garmin rotates
+   * the refresh token on each refresh, so whoever stores the tokens has to see every one, not only
+   * the first: an unsaved refresh leaves the store with a refresh token Garmin no longer accepts.
+   * `GarminAuth` sets this to its own save. An error it throws fails the call that refreshed.
+   */
+  onRefresh: ((client: GarminClient) => Promise<void> | void) | null = null;
+
   async refreshDiToken(): Promise<void> {
     if (!this.di_refresh_token || !this.di_client_id) {
       throw new GarminAuthenticationError("No DI refresh token available");
@@ -112,6 +120,7 @@ export class GarminClient {
     if (!data.access_token) throw new GarminAuthenticationError("DI refresh returned no access_token");
     this.di_token = data.access_token;
     if (data.refresh_token) this.di_refresh_token = data.refresh_token;
+    if (this.onRefresh) await this.onRefresh(this);
   }
 
   /** GET a connectapi path, refreshing the DI token once on 401. */

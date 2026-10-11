@@ -12,7 +12,7 @@ npm install garmin-auth
 
 Garmin blocks its own sign-in from most cloud IPs, so a fresh login (email, password and the second factor) goes through a small Cloudflare Worker, which is in this repository's [`worker/`](https://github.com/drkostas/garmin-auth/tree/main/worker) folder. `createSsoWorkerClient` talks to it, and `tokensFromResult` turns its answer into tokens you can save in a store.
 
-After that the package works from the saved tokens. `GarminAuth` loads them, refreshes the DI token when it expires, saves the new tokens, and gives you a client.
+After that the package works from the saved tokens. `GarminAuth` loads them, refreshes the DI token when it expires, saves the new tokens after every refresh (Garmin rotates the refresh token each time, so an unsaved one stops working), and gives you a client.
 
 ```ts
 import { GarminAuth, DBTokenStore, FileTokenStore } from "garmin-auth";
