@@ -101,3 +101,50 @@ describe("GarminAuth cached login", () => {
     expect(s.deletes).toBe(0);
   });
 });
+
+describe("GarminAuth saves every refresh, not only the startup one", () => {
+  /** Profile check answers 200; later calls answer 401 once, then 200; refreshes rotate. */
+  function stubRotatingGarmin() {
+    let refreshes = 0;
+    let apiCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("diauth.garmin.com")) {
+        refreshes++;
+        return new Response(JSON.stringify({ access_token: `access-${refreshes + 1}`, refresh_token: `refresh-${refreshes + 1}` }), { status: 200 });
+      }
+      apiCalls++;
+      // 1: the startup profile check; 2: a call a day later, after the access token expired.
+      return new Response(apiCalls === 2 ? "" : "{}", { status: apiCalls === 2 ? 401 : 200 });
+    }));
+  }
+
+  it("saves the rotated tokens when a call made long after login refreshes", async () => {
+    const { s, store } = memoryStore();
+    stubRotatingGarmin();
+    const client = await new GarminAuth({ store }).client();
+    expect(JSON.parse(s.tokens!).di_refresh_token).toBe("refresh"); // nothing refreshed yet
+
+    await client.connectapi("/activitylist-service/activities/search/activities");
+
+    expect(JSON.parse(s.tokens!)).toMatchObject({ di_token: "access-2", di_refresh_token: "refresh-2" });
+  });
+
+  it("fails the call when that save fails, rather than carry tokens the store lost", async () => {
+    const { store } = memoryStore();
+    stubRotatingGarmin();
+    const client = await new GarminAuth({ store }).client();
+    store.save = async () => { throw new Error("db down"); };
+    await expect(client.connectapi("/x")).rejects.toThrow("db down");
+  });
+
+  it("a bare GarminClient has no hook and refreshes as before", async () => {
+    stubRotatingGarmin();
+    const { GarminClient } = await import("../src/client");
+    const c = new GarminClient();
+    c.loads(TOKENS);
+    expect(c.onRefresh).toBeNull();
+    await c.connectapi("/first"); // 200
+    await c.connectapi("/second"); // 401 → refresh → 200
+    expect(c.di_refresh_token).toBe("refresh-2");
+  });
+});
