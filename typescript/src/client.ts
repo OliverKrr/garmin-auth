@@ -87,7 +87,6 @@ export class GarminClient {
     return nativeHeaders({ "Authorization": `Bearer ${this.di_token}`, "Accept": "application/json" });
   }
 
-  /** Refresh the DI Bearer token using the stored refresh token. */
   /**
    * Called after every successful refresh, with the client holding the new tokens. Garmin rotates
    * the refresh token on each refresh, so whoever stores the tokens has to see every one, not only
@@ -96,6 +95,7 @@ export class GarminClient {
    */
   onRefresh: ((client: GarminClient) => Promise<void> | void) | null = null;
 
+  /** Refresh the DI Bearer token using the stored refresh token. */
   async refreshDiToken(): Promise<void> {
     if (!this.di_refresh_token || !this.di_client_id) {
       throw new GarminAuthenticationError("No DI refresh token available");
