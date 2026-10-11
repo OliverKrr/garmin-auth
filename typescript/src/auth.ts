@@ -91,6 +91,9 @@ export class GarminAuth {
     // is never caught by it: losing a refreshed token is a storage fault, and reporting it as an
     // authentication one would send the caller down the needs_mfa path over a healthy credential.
     await this.persist(client);
+    // Every later refresh (a 401 in any call, a day or more from now) saves too, since Garmin
+    // rotates the refresh token each time and the stored one stops working.
+    client.onRefresh = () => this.persist(client);
     return client;
   }
 

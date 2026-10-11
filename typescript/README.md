@@ -25,7 +25,7 @@ const tokens = tokensFromResult(r); // save these in a store
 
 Pending MFA steps live in memory, so the second step has to reach the same process as the first: a long-running server, not a serverless function.
 
-After that the package works from the saved tokens. `GarminAuth` loads them, refreshes the DI token when it expires, saves the new tokens, and gives you a client.
+After that the package works from the saved tokens. `GarminAuth` loads them, refreshes the DI token when it expires, saves the new tokens after every refresh (Garmin rotates the refresh token each time, so an unsaved one stops working), and gives you a client.
 
 ```ts
 import { GarminAuth, DBTokenStore, FileTokenStore } from "garmin-auth";
